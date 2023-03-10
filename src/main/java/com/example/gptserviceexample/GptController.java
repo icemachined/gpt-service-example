@@ -14,38 +14,46 @@ public class GptController {
     SharedInterpreter interp;
     GptController(){
         MainInterpreter.setSharedModulesArgv("",
-                "--dataset=shakespeare",
+                "config/train_shakespeare_char.py",
+                "--log_interval=1",
                 "--n_layer=4",
                 "--n_head=4",
-                "--n_embd=64",
+                "--n_embd=128",
                 "--device=cpu",
                 "--compile=False",
-                "--eval_iters=1",
+                "--eval_iters=20",
                 "--block_size=64",
-                "--batch_size=8");
-        String relativeGPTmasterPath = "target/python/nanoGPT-master";
-        String gptDir = null;
+                "--batch_size=12",
+                "--max_iters=2000",
+                "--lr_decay_iters=2000",
+                "--dropout=0.0");
+        String relativeGPTmasterPath = "build/python/nanoGPT-master";
+        String gptDir;
         try {
             gptDir = new File(relativeGPTmasterPath).getCanonicalPath();
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
-        JepInitializer.INSTANCE.getConfig().addIncludePaths(gptDir);
-        JepInitializer.INSTANCE.getConfig().addIncludePaths("$gptDir/data/shakespeare");
-        SharedInterpreter.setConfig(JepInitializer.INSTANCE.getConfig());
+        JepInitializer.getConfig().addIncludePaths(gptDir);
+        JepInitializer.getConfig().addIncludePaths("$gptDir/data/shakespeare_char");
+        SharedInterpreter.setConfig(JepInitializer.getConfig());
         interp = new SharedInterpreter();
         interp.eval("import os");
-        interp.eval("os.chdir('$relativeGPTmasterPath')");
+        interp.eval("os.chdir('" + relativeGPTmasterPath + "')");
     }
     @PostMapping
     String generatePoem(@RequestParam String start) {
-
+        interp.set("__file__", "initgpt.py");
+        interp.runScript("initgpt.py");
+        return interp.invoke("generate_text", start).toString();
     }
+
     @PostMapping
-    String trainGPT() {
+    void trainGPT() {
         interp.set("__file__", "prepare.py");
         interp.runScript("data/shakespeare_char/prepare.py");
-        interp.eval("os.chdir('../..')");
+
+        //interp.eval("os.chdir('../..')");
         interp.runScript("train.py");
     }
 }
