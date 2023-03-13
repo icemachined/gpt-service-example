@@ -2,7 +2,7 @@ import de.undercouch.gradle.tasks.download.Download
 
 plugins {
     java
-    id("org.springframework.boot") version "3.0.3"
+    id("org.springframework.boot") version "2.4.0"
     id("io.spring.dependency-management") version "1.1.0"
     id("de.undercouch.download") version "5.3.0"
 }
@@ -25,7 +25,8 @@ var downloadGpt = tasks.create<Download>("downloadGPT") {
 
     overwrite(false)
 }
-tasks.create<Copy>("unzipGPT") {
+
+var unzipGPT = tasks.create<Copy>("unzipGPT") {
     dependsOn(downloadGpt)
 
     from(zipTree(downloadGpt.dest))
@@ -35,10 +36,15 @@ tasks.create<Copy>("unzipGPT") {
 dependencies {
     implementation("org.springframework.boot:spring-boot-starter-web")
     implementation("black.ninia:jep:4.1.1")
+    implementation("io.springfox:springfox-swagger-ui:3.0.0")
+    implementation("io.springfox:springfox-boot-starter:3.0.0")
     testImplementation("org.springframework.boot:spring-boot-starter-test")
     jepArchive("com.icemachined:jep-distro-cp3.10:4.1.1@tgz")
     runtimeOnly(fileTree("$buildDir/distros/jep-distro").apply {
         builtBy(resolveJep)
+    })
+    runtimeOnly(fileTree("$buildDir/python").apply {
+        builtBy(unzipGPT)
     })
 }
 

@@ -41,14 +41,15 @@ public class GptController {
         interp.eval("import os");
         interp.eval("os.chdir('" + relativeGPTmasterPath + "')");
     }
-    @PostMapping
+
+    @PostMapping(path="/gpt/poem")
     String generatePoem(@RequestParam String start) {
         interp.set("__file__", "initgpt.py");
         interp.runScript("initgpt.py");
         return interp.invoke("generate_text", start).toString();
     }
 
-    @PostMapping
+    @PostMapping(path="/gpt/train")
     void trainGPT() {
         interp.set("__file__", "prepare.py");
         interp.runScript("data/shakespeare_char/prepare.py");

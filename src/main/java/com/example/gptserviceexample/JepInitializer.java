@@ -74,14 +74,14 @@ class JepInitializer {
         } else {
             Path jepRoot = null;
             try {
-                jepRoot = Paths.get(packageInitFile.toURI()).getParent().getParent().resolve("jep-distro").resolve("jep");
+                jepRoot = Paths.get(packageInitFile.toURI()).getParent().getParent().getParent().resolve("distros").resolve("jep-distro").resolve("jep");
             } catch (URISyntaxException e) {
                 throw new RuntimeException(e);
             }
             jepLibrary = deriveLepLibraryFile(jepRoot);
         }
         if (!jepLibrary.exists()) {
-            throw new IllegalStateException("Can't find jep library. File $jepLibrary does not exist.");
+            throw new IllegalStateException(String.format("Can't find jep library. File %s does not exist.", jepLibrary));
         }
         MainInterpreter.setJepLibraryPath(jepLibrary.getPath());
         config.addIncludePaths(
