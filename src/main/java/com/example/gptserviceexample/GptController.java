@@ -11,7 +11,7 @@ import java.io.IOException;
 
 @RestController
 public class GptController {
-    SharedInterpreter interp;
+    private final String relativeGPTmasterPath;
     GptController(){
         MainInterpreter.setSharedModulesArgv("",
                 "config/train_shakespeare_char.py",
@@ -27,7 +27,7 @@ public class GptController {
                 "--max_iters=2000",
                 "--lr_decay_iters=2000",
                 "--dropout=0.0");
-        String relativeGPTmasterPath = "build/python/nanoGPT-master";
+        relativeGPTmasterPath = "build/python/nanoGPT-master";
         String gptDir;
         try {
             gptDir = new File(relativeGPTmasterPath).getCanonicalPath();
@@ -37,13 +37,11 @@ public class GptController {
         JepInitializer.getConfig().addIncludePaths(gptDir);
         JepInitializer.getConfig().addIncludePaths("$gptDir/data/shakespeare_char");
         SharedInterpreter.setConfig(JepInitializer.getConfig());
-        interp = new SharedInterpreter();
-        interp.eval("import os");
-        interp.eval("os.chdir('" + relativeGPTmasterPath + "')");
     }
 
     @PostMapping(path="/gpt/poem")
     String generatePoem(@RequestParam String start) {
+        SharedInterpreter interp = new SharedInterpreter();
         interp.set("__file__", "initgpt.py");
         interp.runScript("initgpt.py");
         return interp.invoke("generate_text", start).toString();
@@ -51,10 +49,14 @@ public class GptController {
 
     @PostMapping(path="/gpt/train")
     void trainGPT() {
+        SharedInterpreter interp = new SharedInterpreter();
+        interp.eval("import os");
+        interp.eval("os.chdir('" + relativeGPTmasterPath + "')");
         interp.set("__file__", "prepare.py");
         interp.runScript("data/shakespeare_char/prepare.py");
 
         //interp.eval("os.chdir('../..')");
         interp.runScript("train.py");
+        interp.close();
     }
 }
