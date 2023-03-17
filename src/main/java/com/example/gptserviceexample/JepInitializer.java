@@ -29,6 +29,8 @@ class JepInitializer {
 
     private static Logger LOGGER = LoggerFactory.getLogger(JepInitializer.class);
 
+    public static final Path gptInitFile;
+
     static {
         LOGGER.info("Initializing JEP");
 
@@ -48,6 +50,7 @@ class JepInitializer {
             // we want to have the parent folder of "CPGPython" so that we can do "import CPGPython"
             // in python
             try {
+                gptInitFile = Paths.get(packageInitFile.toURI());
                 config.addIncludePaths(Paths.get(packageInitFile.toURI()).getParent().toString());
             } catch (URISyntaxException e) {
                 throw new RuntimeException(e);
@@ -66,6 +69,7 @@ class JepInitializer {
             } catch (IOException e) {
                 throw new RuntimeException(e);
             }
+            gptInitFile = Paths.get(targetFolder.toUri()).resolve("initgpt.py");
         }
 
         File jepLibrary = null;
