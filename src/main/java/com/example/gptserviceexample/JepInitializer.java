@@ -1,15 +1,13 @@
 package com.example.gptserviceexample;
 
-import jep.Jep;
-import jep.JepConfig;
-import jep.MainInterpreter;
+import jep.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.lang.IllegalStateException;
 import java.net.JarURLConnection;
 import java.net.URISyntaxException;
 import java.net.URL;
@@ -29,9 +27,11 @@ class JepInitializer {
 
     private static Logger LOGGER = LoggerFactory.getLogger(JepInitializer.class);
 
-    public static final Path gptInitFile;
+    private static Path gptInitFile;
+    private static Path pythonCodeRootPath;
+    private static  String relativeGPTmasterPath;
 
-    static {
+    public static synchronized void initialize(boolean useGPU) {
         LOGGER.info("Initializing JEP");
 
         String packageName = "ExampleModule";
@@ -51,25 +51,25 @@ class JepInitializer {
             // in python
             try {
                 gptInitFile = Paths.get(packageInitFile.toURI());
-                config.addIncludePaths(Paths.get(packageInitFile.toURI()).getParent().toString());
+                pythonCodeRootPath = gptInitFile.getParent();
+                config.addIncludePaths(pythonCodeRootPath.toString());
             } catch (URISyntaxException e) {
                 throw new RuntimeException(e);
             }
         } else {
-            Path targetFolder = null;
             try {
-                targetFolder = Files.createTempDirectory("jep_python_example");
+                pythonCodeRootPath = Files.createTempDirectory("jep_python_example");
             } catch (IOException e) {
                 throw new RuntimeException(e);
             }
-            config.addIncludePaths(targetFolder.toString());
+            config.addIncludePaths(pythonCodeRootPath.toString());
 
             try {
-                extractPythonPackage(packageInitFile, packageName, targetFolder);
+                extractPythonPackage(packageInitFile, packageName, pythonCodeRootPath);
             } catch (IOException e) {
                 throw new RuntimeException(e);
             }
-            gptInitFile = Paths.get(targetFolder.toUri()).resolve("initgpt.py");
+            gptInitFile = Paths.get(pythonCodeRootPath.toUri()).resolve("initgpt.py");
         }
 
         File jepLibrary = null;
@@ -91,7 +91,36 @@ class JepInitializer {
         config.addIncludePaths(
             jepLibrary.toPath().getParent().getParent().toString()
         );
+        try {
+            relativeGPTmasterPath = new File("build/python/nanoGPT-master").getCanonicalPath().replace('\\', '/');
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+        config.addIncludePaths(relativeGPTmasterPath);
+        config.addIncludePaths(relativeGPTmasterPath + "/data/shakespeare_char");
+        if (useGPU) {
+            MainInterpreter.setSharedModulesArgv("",
+                    "config/train_shakespeare_char.py",
+                    "--compile=False");
+        } else {
+            MainInterpreter.setSharedModulesArgv("",
+                    "config/train_shakespeare_char.py",
+                    "--log_interval=1",
+                    "--n_layer=4",
+                    "--n_head=4",
+                    "--n_embd=128",
+                    "--device=cpu",
+                    "--compile=False",
+                    "--eval_iters=20",
+                    "--block_size=64",
+                    "--batch_size=12",
+                    "--max_iters=2000",
+                    "--lr_decay_iters=2000",
+                    "--dropout=0.0");
+        }
+        SharedInterpreter.setConfig(config);
     }
+
 
     private static File deriveLepLibraryFile(Path jepRoot) {
         switch (getOS()) {
@@ -148,7 +177,7 @@ class JepInitializer {
         }
     }
 
-    static OS getOS() {
+    private static OS getOS() {
         String os = System.getProperty("os.name").toString().toLowerCase();
         if (os.contains("win")) {
             return OS.WINDOWS;
@@ -160,15 +189,53 @@ class JepInitializer {
         return null;
     }
 
-    public static JepConfig getConfig() {
+    public static synchronized JepConfig getConfig() {
         return config;
     }
 
     enum OS {
         WINDOWS, LINUX, MAC
     }
+    private static boolean notPrepared = true;
 
-    public static void setupDebugger(Jep jep) throws IOException {
+    public static volatile boolean isTrained = false;
+
+    public static synchronized Jep createInterpreter(boolean isShared) {
+        LOGGER.info("Initializing SubInterpreter");
+
+        Jep interp = isShared ? new SharedInterpreter() : new SubInterpreter(JepInitializer.config);
+
+        setupDebugger(interp);
+
+        setupProfiler(interp);
+
+        if(notPrepared) {
+            interp.eval("import os");
+            interp.eval("os.chdir('" + JepInitializer.relativeGPTmasterPath + "')");
+            System.out.println(interp.getValue("os.getcwd()"));
+            String prepFile = "data/shakespeare_char/prepare.py";
+            interp.set("__file__", prepFile);
+            interp.runScript(prepFile);
+            notPrepared = false;
+        }
+        return interp;
+    }
+
+    public static void prepareForInference(Jep interp) {
+        interp.eval("import os");
+        interp.eval("os.chdir('" + JepInitializer.relativeGPTmasterPath + "')");
+        String initGptFile = JepInitializer.gptInitFile.toString();
+        interp.set("__file__", initGptFile);        // load script
+        interp.runScript(JepInitializer.gptInitFile.toString());
+    }
+
+    public static void dumpProfilerStats(Jep jep) {
+        String profilerStatFile = System.getenv("PROFILER_STAT_FILE");
+        if (profilerStatFile != null) {
+            jep.invoke("dump_profiler_stats", profilerStatFile);
+        }
+    }
+    public static void setupDebugger(Jep jep) {
         String debugEgg = System.getenv("DEBUG_PYTHON_EGG");
         String debugHost = System.getenv("DEBUG_PYTHON_HOST");
         if(debugHost == null)
@@ -176,8 +243,15 @@ class JepInitializer {
         String debugPortStr = System.getenv("DEBUG_PYTHON_PORT");
         Integer debugPort = debugPortStr == null ? 52225 : Integer.valueOf(debugPortStr);
         if (debugEgg != null) {
-            jep.runScript(new File(JepInitializer.class.getResource("/setup_debug.py").getFile()).getCanonicalPath());
-            jep.invoke("enable_debugger", debugEgg, debugHost, debugPort);
+            jep.runScript(JepInitializer.pythonCodeRootPath.resolve("setup_debug.py").toString());
+            jep.invoke("setup_debugger", debugEgg, debugHost, debugPort);
+        }
+    }
+
+    public static void setupProfiler(Jep jep) {
+        String profilerStatFile = System.getenv("PROFILER_STAT_FILE");
+        if (profilerStatFile != null) {
+            jep.runScript(JepInitializer.pythonCodeRootPath.resolve("setup_profiler.py").toString());
         }
     }
 }

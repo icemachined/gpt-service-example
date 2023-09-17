@@ -39,7 +39,7 @@ dependencies {
     implementation("io.springfox:springfox-swagger-ui:3.0.0")
     implementation("io.springfox:springfox-boot-starter:3.0.0")
     testImplementation("org.springframework.boot:spring-boot-starter-test")
-    jepArchive("com.icemachined:jep-distro-cp3.9:4.1.1@tgz")
+    jepArchive("com.icemachined:jep-distro-cp3.10:4.1.1@tgz")
     runtimeOnly(fileTree("$buildDir/distros/jep-distro").apply {
         builtBy(resolveJep)
     })
