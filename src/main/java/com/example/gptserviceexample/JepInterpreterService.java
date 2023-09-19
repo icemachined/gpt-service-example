@@ -50,7 +50,7 @@ class JepInterpreterService {
     }
 
     private void ensureReadyForInference(Jep interp) {
-        if (!isReadyForInference.get()) {
+        if (!isReadyForInference.get() && JepInitializer.isTrained()) {
             JepInitializer.prepareForInference(interp);
             isReadyForInference.set(true);
         }

@@ -33,7 +33,6 @@ public class GptController {
             //interp.eval("os.chdir('../..')");
             interp.set("__file__", "train.py");
             interp.runScript("train.py");
-            JepInitializer.isTrained = true;
             return true;
         });
     }

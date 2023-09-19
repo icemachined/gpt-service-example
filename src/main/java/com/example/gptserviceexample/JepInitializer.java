@@ -200,7 +200,9 @@ class JepInitializer {
     }
     private static boolean notPrepared = true;
 
-    public static volatile boolean isTrained = false;
+    public static boolean isTrained(){
+        return new File(JepInitializer.relativeGPTmasterPath + "/out-shakespeare-char/ckpt.pt").exists();
+    }
 
     public static synchronized Jep createInterpreter(boolean isShared) {
         LOGGER.info("Initializing SubInterpreter");
