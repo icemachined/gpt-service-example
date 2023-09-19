@@ -5,6 +5,9 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Future;
+
 @RestController
 public class GptController {
 
@@ -13,8 +16,8 @@ public class GptController {
 
 
     @PostMapping(path="/gpt/poem")
-    String generatePoem(@RequestParam String start) {
-        return jepService.invoke(interp -> interp.invoke("generate_text", start).toString());
+    String generatePoem(@RequestParam String start) throws ExecutionException, InterruptedException {
+        return jepService.invoke(interp -> interp.invoke("generate_text", start).toString()).get();
     }
 
     @PostMapping(path="/gpt/train")

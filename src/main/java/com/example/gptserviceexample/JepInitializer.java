@@ -101,7 +101,9 @@ class JepInitializer {
         if (useGPU) {
             MainInterpreter.setSharedModulesArgv("",
                     "config/train_shakespeare_char.py",
-                    "--compile=False");
+                    "--compile=False",
+                    "--max_iters=1750"
+                    );
         } else {
             MainInterpreter.setSharedModulesArgv("",
                     "config/train_shakespeare_char.py",

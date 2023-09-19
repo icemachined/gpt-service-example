@@ -10,6 +10,7 @@ import org.springframework.stereotype.Service;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import java.util.function.Function;
 
 /**
@@ -37,23 +38,19 @@ class JepInterpreterService {
      *
      * @param jepInvocation thread safe invocation of jep interpreter.
      */
-    public <T> T invoke(
+    public <T> Future<T> invoke(
             Function<Jep, T> jepInvocation
     ) {
-        try {
-            return executors.submit(() -> {
-                        Jep interp = jepInterpreter.get();
-                        ensureReadyForInference(interp);
-                        return jepInvocation.apply(interp);
-                    }
-            ).get();
-        } catch (InterruptedException | ExecutionException e) {
-            throw new RuntimeException(e);
-        }
+        return executors.submit(() -> {
+                    Jep interp = jepInterpreter.get();
+                    ensureReadyForInference(interp);
+                    return jepInvocation.apply(interp);
+                }
+        );
     }
 
     private void ensureReadyForInference(Jep interp) {
-        if (!isReadyForInference.get() && JepInitializer.isTrained) {
+        if (!isReadyForInference.get()) {
             JepInitializer.prepareForInference(interp);
             isReadyForInference.set(true);
         }
