@@ -224,11 +224,13 @@ class JepInitializer {
     }
 
     public static void prepareForInference(Jep interp) {
+        LOGGER.info("Preparing for inference");
         interp.eval("import os");
         interp.eval("os.chdir('" + JepInitializer.relativeGPTmasterPath + "')");
         String initGptFile = JepInitializer.gptInitFile.toString();
         interp.set("__file__", initGptFile);        // load script
         interp.runScript(JepInitializer.gptInitFile.toString());
+        LOGGER.info("Prepared for inference");
     }
 
     public static void dumpProfilerStats(Jep jep) {
