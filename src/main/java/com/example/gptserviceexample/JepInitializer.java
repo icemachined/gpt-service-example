@@ -116,7 +116,7 @@ class JepInitializer {
                     "--eval_iters=20",
                     "--block_size=64",
                     "--batch_size=12",
-                    "--max_iters=2000",
+                    "--max_iters=250",
                     "--lr_decay_iters=2000",
                     "--dropout=0.0");
         }
