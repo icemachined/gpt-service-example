@@ -2,7 +2,7 @@
 
 This example shows how to run [Nano GPT](https://github.com/karpathy/nanoGPT) from Spring Boot microservice using [JEP](https://github.com/ninia/jep) technology.
 To run this application you can use bootRun task, or start manually GptServiceExampleApplication from IDE.
-Before run you need to perform build task to install [jep-distro](https://github.com/icemachined/jep-distro) and [Nano GPT](https://github.com/karpathy/nanoGPT) sources from master branch  
+Before run you need to perform build task to install [jep-distro](https://github.com/icemachined/jep-distro) module from Maven Central and [Nano GPT](https://github.com/karpathy/nanoGPT) sources from github master branch  
 Then open local Swagger frontend http://localhost:8080/swagger-ui/index.html
 You can use 2 endpoints: <br>
 1. /gpt/train
